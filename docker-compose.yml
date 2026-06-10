@@ -1,0 +1,175 @@
+version: "3.9"
+
+networks:
+  liora_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  kafka_data:
+  zookeeper_data:
+  mlflow_data:
+  grafana_data:
+  prometheus_data:
+
+services:
+
+  # ─── PostgreSQL + TimescaleDB ──────────────────────────────
+  postgres:
+    image: timescale/timescaledb:latest-pg15
+    container_name: liora_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     liora_user
+      POSTGRES_PASSWORD: liora_password_123
+      POSTGRES_DB:       liora_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - liora_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U liora_user -d liora_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Redis ────────────────────────────────────────────────
+  redis:
+    image: redis:7.2-alpine
+    container_name: liora_redis
+    restart: unless-stopped
+    command: redis-server --requirepass redis_password_123
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - liora_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redis_password_123", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Zookeeper (needed by Kafka) ──────────────────────────
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: liora_zookeeper
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME:   2000
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper
+    networks:
+      - liora_net
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Kafka ────────────────────────────────────────────────
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: liora_kafka
+    restart: unless-stopped
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKER_ID:                        1
+      KAFKA_ZOOKEEPER_CONNECT:                zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS:             PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP:   PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME:       PLAINTEXT_INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE:        "true"
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - liora_net
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # ─── Kafka UI (browser interface) ─────────────────────────
+  kafka_ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: liora_kafka_ui
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_CLUSTERS_0_NAME:            liora_cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    ports:
+      - "8080:8080"
+    networks:
+      - liora_net
+
+  # ─── MLflow ───────────────────────────────────────────────
+  mlflow:
+    image: python:3.11-slim
+    container_name: liora_mlflow
+    restart: unless-stopped
+    command: >
+      bash -c "pip install mlflow psycopg2-binary boto3 --quiet &&
+               mlflow server
+               --host 0.0.0.0
+               --port 5000
+               --backend-store-uri postgresql://liora_user:liora_password_123@postgres:5432/liora_db
+               --default-artifact-root /mlflow/artifacts"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_data:/mlflow/artifacts
+    networks:
+      - liora_net
+
+  # ─── Prometheus ───────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.50.1
+    container_name: liora_prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./grafana/provisioning/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - liora_net
+
+  # ─── Grafana ──────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.3.3
+    container_name: liora_grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+      - postgres
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+      GF_USERS_ALLOW_SIGN_UP:     "false"
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - liora_net
+

@@ -1,0 +1,20 @@
+apiVersion: 1
+
+datasources:
+  - name:      Prometheus
+    type:      prometheus
+    access:    proxy
+    url:       http://prometheus:9090
+    isDefault: true
+
+  - name:     PostgreSQL
+    type:     postgres
+    url:      postgres:5432
+    user:     liora_user
+    secureJsonData:
+      password: liora_password_123
+    jsonData:
+      database:         liora_db
+      sslmode:          disable
+      timescaledb:      true
+      postgresVersion:  1500
