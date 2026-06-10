@@ -1,0 +1,40 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Environment
+.env
+
+# Data
+*.csv
+*.parquet
+data/
+
+# Models
+*.h5
+*.keras
+models/
+
+# IDE
+.vscode/
+.idea/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Docker
+.docker/
+
+# MLflow
+mlruns/
+
+# Coverage
+htmlcov/
+.coverage

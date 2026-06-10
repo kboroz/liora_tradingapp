@@ -1,0 +1,4 @@
+-r base.txt
+pyspark==3.5.0
+websocket-client==1.7.0
+python-binance==1.0.19
