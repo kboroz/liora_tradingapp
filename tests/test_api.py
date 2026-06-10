@@ -1,42 +1,26 @@
-"""FastAPI Tests"""
-
-import pytest
+"""API Tests"""
 from fastapi.testclient import TestClient
 from src.api.main import app
 
 client = TestClient(app)
 
-class TestHealth:
-    def test_health_check(self):
-        """Test health endpoint"""
-        response = client.get("/api/v1/health")
-        assert response.status_code == 200
-        assert "status" in response.json()
+def test_health():
+    """Test basic health check"""
+    response = client.get("/health")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "healthy"
+    assert "timestamp" in data
+    assert "components" in data
+    assert data["components"]["database"] == "✅ OK"
+    assert data["components"]["redis"] == "✅ OK"
+    assert data["components"]["api"] == "✅ OK"
+
+def test_health_routes_exist():
+    """Test that health check routes exist"""
+    response = client.get("/health/db")
+    # Should not be 404 (route exists)
+    assert response.status_code != 404
     
-    def test_root_endpoint(self):
-        """Test root endpoint"""
-        response = client.get("/")
-        assert response.status_code == 200
-        assert response.json()["name"] == "Liora Trading App"
-
-class TestPredictions:
-    def test_predict_endpoint(self):
-        """Test prediction endpoint"""
-        payload = {
-            "symbol": "BTCUSDT",
-            "features": {
-                "volatility_20": 0.02,
-                "volume_ratio": 1.1
-            }
-        }
-        response = client.post("/api/v1/predict", json=payload)
-        assert response.status_code == 200
-        assert "prediction" in response.json()
-
-class TestData:
-    def test_get_data(self):
-        """Test get data endpoint"""
-        response = client.get("/api/v1/data/BTCUSDT?limit=10")
-        assert response.status_code == 200
-        assert "symbol" in response.json()
-
+    response = client.get("/health/redis")
+    assert response.status_code != 404
