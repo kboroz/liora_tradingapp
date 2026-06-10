@@ -1,10 +1,8 @@
-# Liora Trading App 🚀
+# Liora Trading App 
 
 A production-grade cryptocurrency trading system with machine learning predictions, real-time data ingestion, and comprehensive monitoring.
 
-## Project Status: 57% → 90%+ ✅
-
-### What's Included
+## What's Included
 
 - **Data Ingestion**: Real-time Binance API integration
 - **Feature Engineering**: 6+ technical indicators
