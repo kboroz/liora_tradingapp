@@ -70,7 +70,7 @@ services:
       dockerfile: Dockerfile
     container_name: liora-api
     environment:
-      DATABASE_URL: postgresql://liora_user:liora_secure_password@postgres:5432/liora_tradingdb
+      DATABASE_URL: postgresql+asyncpg://liora_user:liora_secure_password@postgres:5432/liora_tradingdb
       REDIS_URL: redis://redis:6379/0
       PYTHONUNBUFFERED: 1
     ports:

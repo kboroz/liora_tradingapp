@@ -31,6 +31,3 @@ app.include_router(trades.router, prefix="/api/v1/trades", tags=["Trades"])
 app.include_router(portfolio.router, prefix="/api/v1/portfolio", tags=["Portfolio"])
 app.include_router(predictions.router, prefix="/api/v1/predictions", tags=["Predictions"])
 
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy", "service": "liora-api"}
