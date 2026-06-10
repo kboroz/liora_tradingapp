@@ -42,3 +42,23 @@ CREATE TABLE IF NOT EXISTS portfolio_snapshots (
     invested DOUBLE PRECISION
 );
 SELECT create_hypertable('portfolio_snapshots', 'time', if_not_exists => TRUE);
+
+-- Raw OHLCV from Binance ingestion pipeline (symbol-based, no asset_id FK)
+CREATE TABLE IF NOT EXISTS raw_ohlcv (
+    open_time        TIMESTAMPTZ      NOT NULL,
+    symbol           VARCHAR(20)      NOT NULL,
+    open             DOUBLE PRECISION,
+    high             DOUBLE PRECISION,
+    low              DOUBLE PRECISION,
+    close            DOUBLE PRECISION,
+    volume           DOUBLE PRECISION,
+    quote_volume     DOUBLE PRECISION,
+    trades           INTEGER,
+    taker_buy_base   DOUBLE PRECISION,
+    taker_buy_quote  DOUBLE PRECISION,
+    PRIMARY KEY (open_time, symbol)
+);
+
+SELECT create_hypertable('raw_ohlcv', 'open_time', if_not_exists => TRUE);
+
+CREATE INDEX IF NOT EXISTS raw_ohlcv_symbol_idx ON raw_ohlcv (symbol, open_time DESC);
