@@ -1,7 +1,7 @@
 """Health Check Endpoints"""
 
-from fastapi import APIRouter, Depends
-from datetime import datetime
+from fastapi import APIRouter
+from datetime import datetime, timezone
 from src.database.db import DatabaseManager
 from src.database.redis_client import RedisClient
 
@@ -18,7 +18,7 @@ async def health_check():
     
     return {
         "status": "healthy" if (db_status and redis_status) else "degraded",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "components": {
             "database": "✅ OK" if db_status else "❌ FAILED",
             "redis": "✅ OK" if redis_status else "❌ FAILED",
@@ -39,4 +39,3 @@ async def redis_health():
     redis = RedisClient()
     status = redis.health_check()
     return {"redis": "✅ OK" if status else "❌ FAILED"}
-
