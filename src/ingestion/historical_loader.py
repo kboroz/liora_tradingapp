@@ -129,3 +129,9 @@ class HistoricalLoader:
             print(f"  {symbol:<12} {total:>8} {last_str:<25}")
 
         print()
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    loader = HistoricalLoader()
+    loader.load_all_symbols()
